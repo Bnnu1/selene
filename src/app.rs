@@ -1,10 +1,14 @@
 use ratatui::widgets::ListState;
 use std::{env, fs, path::PathBuf};
+use std::process::Command;
 
 pub struct App {
 	pub cwd: PathBuf,
 	pub items: Vec<PathBuf>,
 	pub list_state: ListState,
+	pub hidden: bool,
+	pub marked: Vec<PathBuf>,
+	pub delete: bool
 }
 
 impl App {
@@ -17,9 +21,12 @@ impl App {
 		);
 		
 		Self {
-			items: Self::get_items(&home).unwrap(),
+			items: vec![],
 			cwd: home,
 			list_state,
+			hidden: false,
+			marked: vec![],
+			delete: false,
 		}
 	}
 
@@ -57,7 +64,8 @@ impl App {
 			}
 		}
 
-		self.items = Self::get_items(&self.cwd).unwrap()
+		self.list_state.select(Some(0));
+		self.items = self.get_items().unwrap()
 	}
 
 	pub fn previous_dir(&mut self) {
@@ -67,14 +75,48 @@ impl App {
 			self.cwd = parent.to_path_buf();
 		}
 
-		self.items = Self::get_items(&self.cwd).unwrap()
+		self.list_state.select(Some(0));
+		self.items = self.get_items().unwrap()
 	}
 
-	fn get_items(dir: &PathBuf) -> std::io::Result<Vec<PathBuf>> {
-		let entries = fs::read_dir(dir)?
-			.map(|entry| entry.map(|e| e.path()))
-			.collect::<Result<Vec<_>, _>>()?;
+	pub fn get_items(&self) -> std::io::Result<Vec<PathBuf>> {
+		let mut entries: Vec<PathBuf> = fs::read_dir(&self.cwd)?
+			.filter_map(Result::ok)
+			.map(|e| e.path())
+			.filter(|path| {
+				self.hidden
+					|| !path
+					.file_name()
+					.and_then(|name| name.to_str())
+					.is_some_and(|name| name.starts_with('.'))
+			})
+			.collect();
+
+		entries.sort();
 
 		Ok(entries)
+	}
+
+	pub fn tog_hidden(&mut self) {
+		self.hidden = !self.hidden;
+		self.items = self.get_items().unwrap();
+	}
+
+	pub fn mark(&mut self) {
+		let selected = match self.list_state.selected() {
+			Some(i) => i,
+			None => return,
+		};
+
+		let path = match self.items.get(selected) {
+			Some(path) => path.clone(),
+			None => return,
+		};
+
+		if let Some(pos) = self.marked.iter().position(|p| p == &path) {
+			self.marked.remove(pos);
+		} else {
+			self.marked.push(path);
+		}
 	}
 }
