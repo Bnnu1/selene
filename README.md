@@ -17,3 +17,4 @@ selene
 %d in place of the current shown directory  
 space to mark item  
 escape to quit  
+z to show/hide hidden items  
