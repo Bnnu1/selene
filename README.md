@@ -11,9 +11,9 @@ To run:
 ```
 selene
 ```
-':' to input commands, it's simply a shell instance so any commands on your machine work
-%m to run it on all marked items
-%s to run it on the highlighted item
-%d in place of the current shown directory
-space to mark item
-escape to quit
+':' to input commands, it's simply a shell instance so any commands on your machine work  
+%m to run it on all marked items  
+%s to run it on the highlighted item  
+%d in place of the current shown directory  
+space to mark item  
+escape to quit  
