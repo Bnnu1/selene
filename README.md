@@ -15,3 +15,5 @@ selene
 %m to run it on all marked items
 %s to run it on the highlighted item
 %d in place of the current shown directory
+space to mark item
+escape to quit
