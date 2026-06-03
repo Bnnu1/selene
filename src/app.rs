@@ -1,4 +1,5 @@
 use ratatui::widgets::ListState;
+use serde::Deserialize;
 use std::{env, fs};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -12,6 +13,15 @@ pub struct App {
 	pub command_mode: bool,
 	pub input: String,
 	pub preview: String,
+	pub config: Config,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Config {
+	pub editor: String,
+	pub background: String,
+	pub foreground: String,
+	pub border: String,
 }
 
 impl App {
@@ -22,7 +32,11 @@ impl App {
 		let home = PathBuf::from(
 			env::current_dir().expect("Couldn't get current directory")
 		);
+
+		let file_content = fs::read_to_string("src/config.json").expect("No config.json");
 		
+		let config: Config = serde_json::from_str(&file_content).expect("Couldn't create config struct");
+
 		Self {
 			items: vec![],
 			cwd: home,
@@ -32,6 +46,7 @@ impl App {
 			command_mode: false,
 			input: String::new(),
 			preview: String::new(),
+			config: config,
 		}
 	}
 
@@ -71,8 +86,15 @@ impl App {
 			}
 		}
 
-		self.list_state.select(Some(0));
-		self.items = self.get_items().unwrap()
+		self.items = self.get_items().unwrap();
+
+		self.list_state.select(
+			if self.items.is_empty() {
+				None
+			} else {
+				Some(0)
+			}
+		);
 	}
 
 	pub fn previous_dir(&mut self) {
@@ -80,8 +102,15 @@ impl App {
 			self.cwd = parent.to_path_buf();
 		}
 
-		self.list_state.select(Some(0));
-		self.items = self.get_items().unwrap()
+		self.items = self.get_items().unwrap();
+
+		self.list_state.select(
+			if self.items.is_empty() {
+				None
+			} else {
+				Some(0)
+			}
+		);
 	}
 
 	pub fn get_items(&self) -> std::io::Result<Vec<PathBuf>> {
@@ -105,6 +134,14 @@ impl App {
 	pub fn tog_hidden(&mut self) {
 		self.hidden = !self.hidden;
 		self.items = self.get_items().unwrap();
+
+		self.list_state.select(
+			if self.items.is_empty() {
+				None
+			} else {
+				Some(0)
+			}
+		);
 	}
 
 	pub fn mark(&mut self) {
@@ -186,5 +223,26 @@ impl App {
 			Err(_) => "<unable to read directory>".into(),
 		}
 		};
+	}
+
+	pub fn open_in_editor(&self) {
+		let Some(index) = self.list_state.selected() else {
+			return;
+		};
+
+		let selected = &self.items[index];
+
+		if !selected.is_file() {
+			return;
+		}
+
+		match Command::new(&self.config.editor)
+			.arg(selected)
+			.current_dir(&self.cwd)
+			.status()
+		{
+			Ok(_) => {}
+			Err(e) => eprintln!("{e}"),
+		}
 	}
 }

@@ -6,13 +6,17 @@ use ratatui::{
 	style::{Color, Modifier, Style},
 	widgets::{Block, Borders, List, ListItem, Paragraph},
 };
-
-const BG: Color = Color::Rgb(10,0,30);
-const FG: Color = Color::Rgb(244, 246, 240);
-const BO: Color = Color::Rgb(82,47,129);
+use std::str::FromStr;
 
 pub fn render(frame: &mut Frame, app: &mut App) {
-	let selected = &app.items[app.list_state.selected().unwrap()];
+	let bg: Color = Color::from_str(&app.config.background).unwrap();
+	let fg: Color = Color::from_str(&app.config.foreground).unwrap();
+	let bo: Color = Color::from_str(&app.config.border).unwrap();
+
+	let selected = app
+		.list_state
+		.selected()
+		.and_then(|i| app.items.get(i));
 	
 	let vertical = Layout::default()
 		.direction(Direction::Vertical)
@@ -36,13 +40,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 		.map(|item| {
 			let style = if app.marked.contains(item) {
 				Style::default()
-					.fg(BO)
+					.fg(bo)
 					.add_modifier(
 						Modifier::BOLD |
 						Modifier::ITALIC
 					)
 				} else {
-					Style::default().fg(FG)
+					Style::default().fg(fg)
 				};
 		
 			ListItem::new(item
@@ -57,27 +61,30 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 	let list = List::new(items)
 		.style(
 			Style::default()
-			.fg(FG)
-			.bg(BG)
+			.fg(fg)
+			.bg(bg)
 		)
 		.block(
 			Block::default()
 				.title(app.cwd.to_string_lossy().to_string())
 				.borders(Borders::ALL)
 				.border_style(
-					Style::default().fg(BO)
+					Style::default().fg(bo)
 				),
 		)
 		.highlight_style(
 			Style::default()
-				.fg(BG)
-				.bg(FG)
+				.fg(bg)
+				.bg(fg)
 		);
 
-	let size_text = match std::fs::metadata(selected) {
-		Ok(meta) if meta.is_file() => human_size(meta.len()),
-		Ok(_) => "<DIR>".to_string(),
-		Err(_) => "?".to_string(),
+	let size_text = match selected {
+		Some(path) => match std::fs::metadata(path) {
+			Ok(meta) if meta.is_file() => human_size(meta.len()),
+			Ok(_) => "<DIR>".to_string(),
+			Err(_) => "?".to_string(),
+		},
+		None => "Empty directory".to_string(),
 	};
 
 	let text = if app.command_mode {
@@ -89,14 +96,14 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 	let status = Paragraph::new(text)
 		.style(
 			Style::default()
-			.fg(FG)
-			.bg(BG)
+			.fg(fg)
+			.bg(bg)
 		)
 		.block(
 			Block::default()
 			.borders(Borders::ALL)
 			.border_style(
-				Style::default().fg(BO)
+				Style::default().fg(bo)
 			)
 		);
 
@@ -105,15 +112,15 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 		Paragraph::new(app.preview.as_str())
 			.style(
 				Style::default()
-				.fg(FG)
-				.bg(BG)
+				.fg(fg)
+				.bg(bg)
 			)
 			.block(
 				Block::default()
 					.title("Preview")
 					.borders(Borders::ALL)
 					.border_style(
-						Style::default().fg(BO)
+						Style::default().fg(bo)
 					),
 			),
 		chunks[1],

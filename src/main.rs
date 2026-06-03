@@ -50,6 +50,13 @@ fn main() -> io::Result<()> {
 						KeyCode::Char(':') => {
 							app.command_mode = true;
 						},
+						KeyCode::Enter => {
+							ratatui::restore();
+							app.open_in_editor();
+							terminal = ratatui::init();
+							app.items = app.get_items().unwrap();
+							terminal.draw(|frame| ui::render(frame, &mut app))?;
+						},
 						_ => {}
 					}
 				}
