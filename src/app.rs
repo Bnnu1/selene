@@ -29,17 +29,17 @@ impl App {
 		let list_state = ListState::default()
 			.with_selected(Some(0));
 
-		let home = PathBuf::from(
+		let cwd = PathBuf::from(
 			env::current_dir().expect("Couldn't get current directory")
 		);
 
-		let file_content = fs::read_to_string("src/config.json").expect("No config.json");
+		let file_content = fs::read_to_string("/usr/share/selene/config.json").expect("No config.json");
 		
 		let config: Config = serde_json::from_str(&file_content).expect("Couldn't create config struct");
 
 		Self {
 			items: vec![],
-			cwd: home,
+			cwd: cwd,
 			list_state,
 			hidden: false,
 			marked: vec![],
