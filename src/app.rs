@@ -11,6 +11,7 @@ pub struct App {
 	pub marked: Vec<PathBuf>,
 	pub command_mode: bool,
 	pub input: String,
+	pub preview: String,
 }
 
 impl App {
@@ -19,7 +20,7 @@ impl App {
 			.with_selected(Some(0));
 
 		let home = PathBuf::from(
-			env::var("HOME").expect("HOME environment variable not set")
+			env::current_dir().expect("Couldn't get current directory")
 		);
 		
 		Self {
@@ -30,6 +31,7 @@ impl App {
 			marked: vec![],
 			command_mode: false,
 			input: String::new(),
+			preview: String::new(),
 		}
 	}
 
@@ -43,6 +45,7 @@ impl App {
 		};
 
 		self.list_state.select(Some(next));
+		self.update_preview();
 	}
 
 	pub fn previous(&mut self) {
@@ -56,6 +59,7 @@ impl App {
 
 
 		self.list_state.select(Some(previous));
+		self.update_preview();
 	}
 
 	pub fn next_dir(&mut self) {
@@ -154,5 +158,35 @@ impl App {
 		}
 
 		self.marked = vec![];
+	}
+
+	pub fn update_preview(&mut self) {
+		let Some(index) = self.list_state.selected() else {
+			self.preview.clear();
+			return;
+		};
+
+		let selected = &self.items[index];
+
+		self.preview = if selected.is_file() {
+		std::fs::read_to_string(selected)
+			.map(|s| {
+			s.lines()
+				.take(50)
+				.collect::<Vec<_>>()
+				.join("\n")
+			})
+			.unwrap_or_else(|_| "<unable to read file>".into())
+		} else {
+		match std::fs::read_dir(selected) {
+			Ok(entries) => entries
+				.flatten()
+				.take(100)
+				.map(|e| e.file_name().to_string_lossy().into_owned())
+				.collect::<Vec<_>>()
+				.join("\n"),
+			Err(_) => "<unable to read directory>".into(),
+		}
+		};
 	}
 }

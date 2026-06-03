@@ -10,16 +10,18 @@ use ratatui::{
     style::{Color, Modifier, Style},
 };
 
-const BG: Color = Color::Rgb(5,14,57);
+const BG: Color = Color::Rgb(10,0,30);
 const FG: Color = Color::Rgb(244, 246, 240);
 const BO: Color = Color::Rgb(82,47,129);
 
 pub fn render(frame: &mut Frame, app: &mut App) {
+	let selected = &app.items[app.list_state.selected().unwrap()];
+	
 	let vertical = Layout::default()
 		.direction(Direction::Vertical)
 		.constraints([
 			Constraint::Min(0),
-			Constraint::Length(1),
+			Constraint::Length(3),
 		])
 		.split(frame.area());
 
@@ -63,7 +65,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 		)
 		.block(
 			Block::default()
-				.title("Files")
+				.title(app.cwd.to_string_lossy().to_string())
 				.borders(Borders::ALL)
 				.border_style(
 					Style::default().fg(BO)
@@ -75,26 +77,50 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 				.bg(FG)
 		);
 
-	frame.render_stateful_widget(list, chunks[0], &mut app.list_state);
-
-	let selected = &app.items[app.list_state.selected().unwrap()];
-
 	let size_text = match std::fs::metadata(selected) {
 		Ok(meta) if meta.is_file() => human_size(meta.len()),
 		Ok(_) => "<DIR>".to_string(),
 		Err(_) => "?".to_string(),
 	};
 
-	let status = match app.command_mode {
-		false => {
-			Paragraph::new(size_text)
-		}
-
-		true => {
-			Paragraph::new(format!(":{}", app.input))
-		}
+	let text = if app.command_mode {
+		format!(":{}", app.input)
+	} else {
+		size_text
 	};
 
+	let status = Paragraph::new(text)
+		.style(
+			Style::default()
+			.fg(FG)
+			.bg(BG)
+		)
+		.block(
+			Block::default()
+			.borders(Borders::ALL)
+			.border_style(
+				Style::default().fg(BO)
+			)
+		);
+
+	frame.render_stateful_widget(list, chunks[0], &mut app.list_state);
+	frame.render_widget(
+		Paragraph::new(app.preview.as_str())
+			.style(
+				Style::default()
+				.fg(FG)
+				.bg(BG)
+			)
+			.block(
+				Block::default()
+					.title("Preview")
+					.borders(Borders::ALL)
+					.border_style(
+						Style::default().fg(BO)
+					),
+			),
+		chunks[1],
+	);
 	frame.render_widget(status, vertical[1]);
 }
 

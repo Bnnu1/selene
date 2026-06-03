@@ -9,6 +9,7 @@ use std::io;
 fn main() -> io::Result<()> {
 	let mut app = App::new();
 	app.items = app.get_items().unwrap();
+	app.update_preview();
 	let mut terminal = ratatui::init();
 
 	loop {
