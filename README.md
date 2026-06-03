@@ -4,7 +4,6 @@ To install (You will need Rust installed):
 ```
 git clone https://github.com/Bnnu1/selene
 cd selene
-EDIT SRC/CONFIG.JSON (editor is the command used to open the editor eg. vim or nvim)
 cargo build --release
 sudo cp target/release/selene /usr/local/bin/
 sudo mkdir -p /usr/share/selene 
@@ -22,3 +21,5 @@ space to mark item
 escape to quit  
 z to show/hide hidden items  
 enter to open file in editor
+
+config is in /usr/share/selene

@@ -72,7 +72,6 @@ impl App {
 			selected
 		};
 
-
 		self.list_state.select(Some(previous));
 		self.update_preview();
 	}
@@ -95,6 +94,8 @@ impl App {
 				Some(0)
 			}
 		);
+
+		self.update_preview();
 	}
 
 	pub fn previous_dir(&mut self) {
@@ -111,6 +112,8 @@ impl App {
 				Some(0)
 			}
 		);
+
+		self.update_preview();
 	}
 
 	pub fn get_items(&self) -> std::io::Result<Vec<PathBuf>> {
