@@ -1,13 +1,10 @@
 use crate::app::App;
 
-use std::fs;
-use ratatui::widgets::Paragraph;
-
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
-    widgets::{Block, Borders, HighlightSpacing, List, ListItem},
-    Frame,
-    style::{Color, Modifier, Style},
+	Frame,
+	layout::{Constraint, Direction, Layout},
+	style::{Color, Modifier, Style},
+	widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 const BG: Color = Color::Rgb(10,0,30);

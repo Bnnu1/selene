@@ -1,6 +1,6 @@
 use ratatui::widgets::ListState;
-use std::{env, fs, path::PathBuf};
-use std::path::Path;
+use std::{env, fs};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub struct App {
@@ -16,7 +16,7 @@ pub struct App {
 
 impl App {
 	pub fn new() -> Self {
-		let mut list_state = ListState::default()
+		let list_state = ListState::default()
 			.with_selected(Some(0));
 
 		let home = PathBuf::from(
@@ -76,8 +76,6 @@ impl App {
 	}
 
 	pub fn previous_dir(&mut self) {
-		let selected = self.list_state.selected().unwrap_or(0);
-
 		if let Some(parent) = self.cwd.parent() {
 			self.cwd = parent.to_path_buf();
 		}

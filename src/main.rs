@@ -3,7 +3,7 @@ mod ui;
 
 use crate::app::App;
 
-use crossterm::event::{self, KeyCode};
+use crossterm::event::{KeyCode, self};
 use std::io;
 
 fn main() -> io::Result<()> {
