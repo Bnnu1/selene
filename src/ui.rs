@@ -1,5 +1,8 @@
 use crate::app::App;
 
+use std::fs;
+use ratatui::widgets::Paragraph;
+
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     widgets::{Block, Borders, HighlightSpacing, List, ListItem},
@@ -12,13 +15,21 @@ const FG: Color = Color::Rgb(244, 246, 240);
 const BO: Color = Color::Rgb(82,47,129);
 
 pub fn render(frame: &mut Frame, app: &mut App) {
+	let vertical = Layout::default()
+		.direction(Direction::Vertical)
+		.constraints([
+			Constraint::Min(0),
+			Constraint::Length(1),
+		])
+		.split(frame.area());
+
 	let chunks = Layout::default()
 		.direction(Direction::Horizontal)
 		.constraints([
 			Constraint::Percentage(50),
 			Constraint::Percentage(50),
 		])
-		.split(frame.area());
+		.split(vertical[0]);
 	
 	let items: Vec<ListItem> = app
 		.items
@@ -59,10 +70,48 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 				),
 		)
 		.highlight_style(
-		Style::default()
-			.fg(BG)
-			.bg(FG)
+			Style::default()
+				.fg(BG)
+				.bg(FG)
 		);
 
 	frame.render_stateful_widget(list, chunks[0], &mut app.list_state);
+
+	let selected = &app.items[app.list_state.selected().unwrap()];
+
+	let size_text = match std::fs::metadata(selected) {
+		Ok(meta) if meta.is_file() => human_size(meta.len()),
+		Ok(_) => "<DIR>".to_string(),
+		Err(_) => "?".to_string(),
+	};
+
+	let status = match app.command_mode {
+		false => {
+			Paragraph::new(size_text)
+		}
+
+		true => {
+			Paragraph::new(format!(":{}", app.input))
+		}
+	};
+
+	frame.render_widget(status, vertical[1]);
+}
+
+fn human_size(bytes: u64) -> String {
+	const KB: f64 = 1024.0;
+	const MB: f64 = KB * 1024.0;
+	const GB: f64 = MB * 1024.0;
+
+	let bytes = bytes as f64;
+
+	if bytes >= GB {
+		format!("{:.1}GB", bytes / GB)
+	} else if bytes >= MB {
+		format!("{:.1}MB", bytes / MB)
+	} else if bytes >= KB {
+		format!("{:.1}KB", bytes / KB)
+	} else {
+		format!("{:.0}B", bytes)
+	}
 }

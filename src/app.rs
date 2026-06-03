@@ -1,5 +1,6 @@
 use ratatui::widgets::ListState;
 use std::{env, fs, path::PathBuf};
+use std::path::Path;
 use std::process::Command;
 
 pub struct App {
@@ -8,7 +9,8 @@ pub struct App {
 	pub list_state: ListState,
 	pub hidden: bool,
 	pub marked: Vec<PathBuf>,
-	pub delete: bool
+	pub command_mode: bool,
+	pub input: String,
 }
 
 impl App {
@@ -26,7 +28,8 @@ impl App {
 			list_state,
 			hidden: false,
 			marked: vec![],
-			delete: false,
+			command_mode: false,
+			input: String::new(),
 		}
 	}
 
@@ -118,5 +121,38 @@ impl App {
 		} else {
 			self.marked.push(path);
 		}
+	}
+
+	pub fn run_command(&mut self) {
+		fn shell_escape(path: &Path) -> String {
+			format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
+		}
+
+		let selected = &self.items[self.list_state.selected().unwrap()];
+
+		let marked = self
+			.marked
+			.iter()
+			.map(|p| shell_escape(p))
+			.collect::<Vec<_>>()
+			.join(" ");
+
+		let cmd = self
+			.input
+			.replace("%m", &marked)
+			.replace("%s", &shell_escape(selected))
+			.replace("%d", &shell_escape(&self.cwd));
+
+		match Command::new("sh")
+			.arg("-c")
+			.arg(&cmd)
+			.current_dir(&self.cwd)
+			.status()
+		{
+			Ok(_) => {}
+			Err(e) => eprintln!("{e}"),
+		}
+
+		self.marked = vec![];
 	}
 }
