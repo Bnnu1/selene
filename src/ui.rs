@@ -2,7 +2,7 @@ use crate::app::App;
 
 use ratatui::{
 	Frame,
-	layout::{Constraint, Direction, Layout},
+	layout::{Constraint, Direction, Layout, Position},
 	style::{Color, Modifier, Style},
 	widgets::{Block, Borders, List, ListItem, Paragraph},
 };
@@ -93,7 +93,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 		size_text
 	};
 
-	let status = Paragraph::new(text)
+	let status = Paragraph::new(text.clone())
 		.style(
 			Style::default()
 			.fg(fg)
@@ -126,6 +126,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
 		chunks[1],
 	);
 	frame.render_widget(status, vertical[1]);
+
+	if app.command_mode {
+		frame.set_cursor_position(Position::new(
+			vertical[1].x + app.cursor_pos as u16 + 2,
+			vertical[1].y + 1,
+		));
+	}
 }
 
 fn human_size(bytes: u64) -> String {

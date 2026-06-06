@@ -22,10 +22,16 @@ fn handle_command_mode(
 	code: KeyCode,
 ) -> io::Result<()> {
 	match code {
-		KeyCode::Char(c) => app.input.push(c),
+		KeyCode::Char(c) => {
+			app.input.insert(app.cursor_pos, c);
+			app.cursor_pos += 1;
+		}
 
 		KeyCode::Backspace => {
-			app.input.pop();
+			if app.cursor_pos > 0 {
+				app.cursor_pos -= 1;
+				app.input.remove(app.cursor_pos);
+			}
 		}
 
 		KeyCode::Enter => {
@@ -42,6 +48,16 @@ fn handle_command_mode(
 		KeyCode::Esc => {
 			app.input.clear();
 			app.command_mode = false;
+		}
+
+		KeyCode::Left => {
+			app.cursor_pos = app.cursor_pos.saturating_sub(1);
+		}
+
+		KeyCode::Right => {
+			if app.cursor_pos < app.input.len() {
+				app.cursor_pos += 1;
+			}
 		}
 
 		_ => {}

@@ -13,6 +13,7 @@ pub struct App {
 	pub marked: Vec<PathBuf>,
 	pub command_mode: bool,
 	pub input: String,
+	pub cursor_pos: usize,
 	pub preview: String,
 	pub config: Config,
 }
@@ -51,6 +52,7 @@ impl App {
 			marked: vec![],
 			command_mode: false,
 			input: String::new(),
+			cursor_pos: 0,
 			preview: String::new(),
 			config: config,
 		}
