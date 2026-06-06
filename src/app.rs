@@ -208,6 +208,8 @@ impl App {
 		}
 
 		self.marked = vec![];
+
+		self.cursor_pos = 0;
 	}
 
 	pub fn update_preview(&mut self) {
