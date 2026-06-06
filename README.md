@@ -7,7 +7,7 @@ cd selene
 cargo build --release
 sudo cp target/release/selene /usr/local/bin/
 sudo mkdir -p /usr/share/selene 
-sudo cp ./src/config.json /usr/share/selene
+sudo cp ./cfg/config.json /usr/share/selene
 ```  
 To run:  
 ```
