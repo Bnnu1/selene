@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 pub struct App {
+	pub running: bool,
 	pub cwd: PathBuf,
 	pub items: Vec<PathBuf>,
 	pub list_state: ListState,
@@ -30,14 +31,19 @@ impl App {
 			.with_selected(Some(0));
 
 		let cwd = PathBuf::from(
-			env::current_dir().expect("Couldn't get current directory")
+			env::current_dir()
+			.expect("Couldn't get current directory")
 		);
 
-		let file_content = fs::read_to_string("/usr/share/selene/config.json").expect("No config.json");
+		let file_content = 
+			fs::read_to_string("/usr/share/selene/config.json")
+			.expect("No config.json");
 		
-		let config: Config = serde_json::from_str(&file_content).expect("Couldn't create config struct");
+		let config: Config = serde_json::from_str(&file_content)
+			.expect("Couldn't create config struct");
 
 		Self {
+			running: true,
 			items: vec![],
 			cwd: cwd,
 			list_state,
@@ -125,7 +131,9 @@ impl App {
 					|| !path
 					.file_name()
 					.and_then(|name| name.to_str())
-					.is_some_and(|name| name.starts_with('.'))
+					.is_some_and(
+						|name| name.starts_with('.')
+					)
 			})
 			.collect();
 
@@ -167,7 +175,9 @@ impl App {
 
 	pub fn run_command(&mut self) {
 		fn shell_escape(path: &Path) -> String {
-			format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
+			format!("'{}'", path
+				.to_string_lossy()
+				.replace('\'', "'\\''"))
 		}
 
 		let selected = &self.items[self.list_state.selected().unwrap()];
@@ -220,7 +230,11 @@ impl App {
 			Ok(entries) => entries
 				.flatten()
 				.take(100)
-				.map(|e| e.file_name().to_string_lossy().into_owned())
+				.map(|e| e
+					.file_name()
+					.to_string_lossy()
+					.into_owned()
+				)
 				.collect::<Vec<_>>()
 				.join("\n"),
 			Err(_) => "<unable to read directory>".into(),
