@@ -4,17 +4,22 @@ use std::{env, fs};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::item_info::ItemInfo;
+
 pub struct App {
 	pub running: bool,
 	pub cwd: PathBuf,
-	pub items: Vec<PathBuf>,
+	pub items: Vec<ItemInfo>,
 	pub list_state: ListState,
 	pub hidden: bool,
-	pub marked: Vec<PathBuf>,
+	pub marked: Vec<ItemInfo>,
+
+	pub preview: String,
+
 	pub command_mode: bool,
 	pub input: String,
 	pub cursor_pos: usize,
-	pub preview: String,
+
 	pub config: Config,
 }
 
@@ -33,20 +38,20 @@ impl App {
 
 		let cwd = PathBuf::from(
 			env::current_dir()
-			.expect("Couldn't get current directory")
+				.expect("Couldn't get current directory")
 		);
 
-		let file_content = 
+		let file_content =
 			fs::read_to_string("/usr/share/selene/config.json")
-			.expect("No config.json");
-		
+				.expect("No config.json");
+
 		let config: Config = serde_json::from_str(&file_content)
 			.expect("Couldn't create config struct");
 
 		Self {
 			running: true,
 			items: vec![],
-			cwd: cwd,
+			cwd,
 			list_state,
 			hidden: false,
 			marked: vec![],
@@ -54,11 +59,15 @@ impl App {
 			input: String::new(),
 			cursor_pos: 0,
 			preview: String::new(),
-			config: config,
+			config,
 		}
 	}
 
 	pub fn next(&mut self) {
+		if self.items.is_empty() {
+			return;
+		}
+
 		let selected = self.list_state.selected().unwrap_or(0);
 
 		let next = if selected != self.items.len() - 1 {
@@ -72,6 +81,10 @@ impl App {
 	}
 
 	pub fn previous(&mut self) {
+		if self.items.is_empty() {
+			return;
+		}
+
 		let selected = self.list_state.selected().unwrap_or(0);
 
 		let previous = if selected != 0 {
@@ -87,21 +100,24 @@ impl App {
 	pub fn next_dir(&mut self) {
 		let selected = self.list_state.selected().unwrap_or(0);
 
-		if let Some(path) = self.items.get(selected) {
-			if path.is_dir() {
-				self.cwd = path.to_path_buf();
-			}
+		let item = match self.items.get(selected) {
+			Some(item) => item,
+			None => return,
+		};
+
+		if item.is_dir {
+			self.cwd = item.path.clone();
+
+			self.items = self.get_items().unwrap();
+
+			self.list_state.select(
+				if self.items.is_empty() {
+					None
+				} else {
+					Some(0)
+				}
+			);
 		}
-
-		self.items = self.get_items().unwrap();
-
-		self.list_state.select(
-			if self.items.is_empty() {
-				None
-			} else {
-				Some(0)
-			}
-		);
 
 		self.update_preview();
 	}
@@ -124,28 +140,29 @@ impl App {
 		self.update_preview();
 	}
 
-	pub fn get_items(&self) -> std::io::Result<Vec<PathBuf>> {
-		let mut entries: Vec<PathBuf> = fs::read_dir(&self.cwd)?
-			.filter_map(Result::ok)
-			.map(|e| e.path())
-			.filter(|path| {
-				self.hidden
-					|| !path
-					.file_name()
-					.and_then(|name| name.to_str())
-					.is_some_and(
-						|name| name.starts_with('.')
-					)
+	pub fn get_items(&self) -> std::io::Result<Vec<ItemInfo>> {
+		let mut items: Vec<ItemInfo> = fs::read_dir(&self.cwd)?
+			.filter_map(|entry| {
+				let path = entry.ok()?.path();
+				ItemInfo::new(&path).ok()
+			})
+			.filter(|item| {
+				self.hidden || !item.name.starts_with('.')
 			})
 			.collect();
 
-		entries.sort();
+		items.sort_by(|a, b| {
+			b.is_dir
+				.cmp(&a.is_dir)
+				.then_with(|| a.name.cmp(&b.name))
+		});
 
-		Ok(entries)
+		Ok(items)
 	}
 
 	pub fn tog_hidden(&mut self) {
 		self.hidden = !self.hidden;
+
 		self.items = self.get_items().unwrap();
 
 		self.list_state.select(
@@ -163,23 +180,28 @@ impl App {
 			None => return,
 		};
 
-		let path = match self.items.get(selected) {
-			Some(path) => path.clone(),
+		let item = match self.items.get(selected) {
+			Some(item) => item.clone(),
 			None => return,
 		};
 
-		if let Some(pos) = self.marked.iter().position(|p| p == &path) {
+		if let Some(pos) = self.marked
+			.iter()
+			.position(|p| p.path == item.path)
+		{
 			self.marked.remove(pos);
 		} else {
-			self.marked.push(path);
+			self.marked.push(item);
 		}
 	}
 
 	pub fn run_command(&mut self) {
 		fn shell_escape(path: &Path) -> String {
-			format!("'{}'", path
-				.to_string_lossy()
-				.replace('\'', "'\\''"))
+			format!(
+				"'{}'",
+				path.to_string_lossy()
+					.replace('\'', "'\\''")
+			)
 		}
 
 		let selected = &self.items[self.list_state.selected().unwrap()];
@@ -187,14 +209,14 @@ impl App {
 		let marked = self
 			.marked
 			.iter()
-			.map(|p| shell_escape(p))
+			.map(|p| shell_escape(&p.path))
 			.collect::<Vec<_>>()
 			.join(" ");
 
 		let cmd = self
 			.input
 			.replace("%m", &marked)
-			.replace("%s", &shell_escape(selected))
+			.replace("%s", &shell_escape(&selected.path))
 			.replace("%d", &shell_escape(&self.cwd));
 
 		match Command::new("sh")
@@ -207,9 +229,10 @@ impl App {
 			Err(e) => eprintln!("{e}"),
 		}
 
-		self.marked = vec![];
-
+		self.marked.clear();
 		self.cursor_pos = 0;
+		self.items = self.get_items().unwrap();
+		self.update_preview();
 	}
 
 	pub fn update_preview(&mut self) {
@@ -218,31 +241,38 @@ impl App {
 			return;
 		};
 
-		let selected = &self.items[index];
+		let Some(selected) = self.items.get(index) else {
+			self.preview.clear();
+			return;
+		};
 
-		self.preview = if selected.is_file() {
-		std::fs::read_to_string(selected)
-			.map(|s| {
-			s.lines()
-				.take(50)
-				.collect::<Vec<_>>()
-				.join("\n")
-			})
-			.unwrap_or_else(|_| "<unable to read file>".into())
+		self.preview = if !selected.is_dir {
+			std::fs::read_to_string(&selected.path)
+				.map(|s| {
+					s.lines()
+						.take(50)
+						.collect::<Vec<_>>()
+						.join("\n")
+				})
+				.unwrap_or_else(|_| {
+					"<unable to read file>".into()
+				})
 		} else {
-		match std::fs::read_dir(selected) {
-			Ok(entries) => entries
-				.flatten()
-				.take(100)
-				.map(|e| e
-					.file_name()
-					.to_string_lossy()
-					.into_owned()
-				)
-				.collect::<Vec<_>>()
-				.join("\n"),
-			Err(_) => "<unable to read directory>".into(),
-		}
+			match std::fs::read_dir(&selected.path) {
+				Ok(entries) => entries
+					.flatten()
+					.take(100)
+					.map(|e| {
+						e.file_name()
+							.to_string_lossy()
+							.into_owned()
+					})
+					.collect::<Vec<_>>()
+					.join("\n"),
+				Err(_) => {
+					"<unable to read directory>".into()
+				}
+			}
 		};
 	}
 
@@ -251,14 +281,16 @@ impl App {
 			return;
 		};
 
-		let selected = &self.items[index];
+		let Some(selected) = self.items.get(index) else {
+			return;
+		};
 
-		if !selected.is_file() {
+		if selected.is_dir {
 			return;
 		}
 
 		match Command::new(&self.config.editor)
-			.arg(selected)
+			.arg(&selected.path)
 			.current_dir(&self.cwd)
 			.status()
 		{

@@ -1,6 +1,7 @@
 mod app;
 mod ui;
 mod event;
+mod item_info;
 
 use crate::app::App;
 use std::io;
