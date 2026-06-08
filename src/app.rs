@@ -204,7 +204,10 @@ impl App {
 			)
 		}
 
-		let selected = &self.items[self.list_state.selected().unwrap()];
+		let selected = self
+			.list_state
+			.selected()
+			.and_then(|i| self.items.get(i));
 
 		let marked = self
 			.marked
@@ -216,7 +219,11 @@ impl App {
 		let cmd = self
 			.input
 			.replace("%m", &marked)
-			.replace("%s", &shell_escape(&selected.path))
+			.replace("%s", 
+				&selected
+					.map(|item| shell_escape(&item.path))
+					.unwrap_or_default(),
+			)
 			.replace("%d", &shell_escape(&self.cwd));
 
 		match Command::new("sh")
@@ -232,6 +239,11 @@ impl App {
 		self.marked.clear();
 		self.cursor_pos = 0;
 		self.items = self.get_items().unwrap();
+		if self.items.is_empty() {
+			self.list_state.select(None);
+		} else {
+			self.list_state.select(Some(0));
+		}
 		self.update_preview();
 	}
 
